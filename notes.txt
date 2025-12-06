@@ -1,0 +1,16 @@
+Lets generally analyse the sentiment of songs/genres from the perspective of different sentiment data sets.
+How does the sentiment data set affect the result? Will the sentiment of a song change based off of what data the model was trained from?
+
+Datasets:
+- GoEmotions: https://github.com/google-research/google-research/tree/master/goemotions
+- EmoLex: https://saifmohammad.com/WebPages/NRC-Emotion-Lexicon.htm
+    - Maps SINGLE WORDS to positive/negative sentiments
+- Mental health: https://www.kaggle.com/datasets/suchintikasarkar/sentiment-analysis-for-mental-health/data
+- Social media: https://www.kaggle.com/datasets/kashishparmar02/social-media-sentiments-analysis-dataset
+
+# Data collection
+- The GoEmotions dataset, has sentences with emotional meanings
+    - Preprocessed text with a standard text-cleaning function
+    - Found sentiment from emotions derived from the sentences
+        - Emotions were weighted to decrease the amount of neutral results, had a minor effect
+        
