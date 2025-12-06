@@ -13,27 +13,26 @@ def train_model(train_data, val_data, vocab, config, device):
         embed_dim=config["embed_dim"],
         lstm_dim=config["lstm_dim"],
         num_classes=config["num_classes"],
-        pad_idx=vocab.stoi["<pad>"]   # 👈 new
+        pad_idx=vocab.stoi["<pad>"]
     ).to(device)
 
-    # Use a few workers + pinned memory when on CUDA
     use_cuda = device.type == "cuda"
+
     train_loader = DataLoader(
         train_data,
         batch_size=config["batch_size"],
         shuffle=True,
-        num_workers=0,           # 👈 no multiprocessing on Windows
+        num_workers=0,
         pin_memory=use_cuda
-)
+    )
 
     val_loader = DataLoader(
         val_data,
         batch_size=config["batch_size"],
         shuffle=False,
-        num_workers=0,           # 👈 same here
+        num_workers=0,
         pin_memory=use_cuda
     )
-
 
     criterion = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=config["lr"])
@@ -57,5 +56,4 @@ def train_model(train_data, val_data, vocab, config, device):
         avg_loss = total_loss / len(train_loader)
         print(f"Train Loss: {avg_loss:.4f}")
 
-    # Return both model and the validation loader so we can evaluate
     return model, val_loader
