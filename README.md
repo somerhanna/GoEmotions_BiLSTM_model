@@ -9,12 +9,14 @@ Run this:
 
 `python training.py --csv <PATH_TO_CSV> --out_prefix <NAME>`
 
-example usage: python training.py --csv data/_processed_datasets/goemotions_processed_weighted.csv --out_prefix sentiment_weighted
+example usage: 
+
+`python training.py --csv data/_processed_datasets/goemotions_processed_weighted.csv --out_prefix sentiment_weighted`
 
 This will save:
 
-'model_<NAME>.pth'
-'vocab_<NAME>.pkl'
+`model_<NAME>.pth`
+`vocab_<NAME>.pkl`
 
 in the project root.
 
@@ -56,17 +58,17 @@ These are the filenames main.py expects.
 
 ##################### How to preprocess datasets ##########################
 
-'python -m preprocessing.<FILENAME>'
+`python -m preprocessing.<FILENAME>`
 
 example: 
 
-python -m preprocessing.preproc_mentalhealth
+`python -m preprocessing.preproc_mentalhealth`
 
 ############################# How to run project #######################
 
 use 
 
-python main.py
+`python main.py`
 
 To view results of trained model (sentiment scores) corresponding to the text input.
 
