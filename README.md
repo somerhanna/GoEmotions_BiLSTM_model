@@ -7,7 +7,7 @@ All training is done via training.py.
 
 Run this:
 
-'python training.py --csv <PATH_TO_CSV> --out_prefix <NAME>'
+`python training.py --csv <PATH_TO_CSV> --out_prefix <NAME>`
 
 example usage: python training.py --csv data/_processed_datasets/goemotions_processed_weighted.csv --out_prefix sentiment_weighted
 
