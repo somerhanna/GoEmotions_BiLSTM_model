@@ -4,6 +4,10 @@ import pandas as pd
 from unidecode import unidecode
 from tqdm import tqdm
 
+FILE_IN = "data/songs/lyrics_fuzzymatched.csv"
+FILE_OUT = "data/songs/lyrics_with_tags.csv"
+FILE_DEBUG_OUT = "data/songs/failed_tag_lookups.csv"
+
 API_KEY = "82b36dc4aba7706ecde0a72948920b05" # Don't care abt committing this, its free and acct is throwaway
 BASE_URL = "http://ws.audioscrobbler.com/2.0/"
 
@@ -13,16 +17,15 @@ MAX_RETRIES = 5            # network/timeout retry attempts
 
 ARTIST_COL = "corrected_artist"
 SONG_COL   = "corrected_track"
+ALBUM_COL = "Album"
 
 def normalize(s):
     return unidecode(str(s).lower().strip())
-
 
 def rate_limit_backoff():
     """Sleep longer when Last.fm rate-limits us."""
     print("\n⚠️  Hit Last.fm rate limit (429). Backing off…")
     time.sleep(RATE_LIMIT_SLEEP)
-
 
 @lru_cache(maxsize=100000)
 def get_top_tag(artist, track):
@@ -56,14 +59,13 @@ def get_top_tag(artist, track):
             # Last.fm returns {"error": 6, "message": "..."}
             if "error" in data:
                 error_code = data["error"]
-                tqdm.write(f"Error code: {error_code}")
+                tqdm.write(f"Error code: {error_code}, {data.get('message')}")
                 return None, f"api_error_{error_code}"
 
             tags = data.get("toptags", {}).get("tag")
 
             # No tags at all
             if not tags:
-                print(data)
                 return None, "no_tags"
 
             # Single tag as dict
@@ -81,94 +83,116 @@ def get_top_tag(artist, track):
 
     return None, "network_error"
 
+@lru_cache(maxsize=100000)
+def get_album_tag(artist, album):
+    """Return (tag, status) for album.getTopTags"""
 
-GENRE_MAP = {
-    "pop": "Pop",
-    "dance pop": "Pop",
-    "rock": "Rock",
-    "alternative": "Rock",
-    "indie": "Rock",
-    "hip hop": "Hip-Hop",
-    "rap": "Hip-Hop",
-    "trap": "Hip-Hop",
-    "rnb": "R&B",
-    "soul": "R&B",
-    "funk": "R&B",
-    "electronic": "Electronic",
-    "edm": "Electronic",
-    "house": "Electronic",
-    "techno": "Electronic",
-    "trance": "Electronic",
-    "country": "Country",
-    "metal": "Metal",
-    "jazz": "Jazz",
-    "classical": "Classical",
-    "folk": "Folk",
-    "latin": "Latin",
-    "reggaeton": "Latin",
-    "reggae": "Reggae",
-    "blues": "Blues",
-}
+    if not album:
+        return None, "no_album"
 
-def map_to_major(tag):
-    if tag is None:
-        return "Unknown"
-    tag_low = tag.lower()
-    for key in GENRE_MAP:
-        if key in tag_low:
-            return GENRE_MAP[key]
-    return "Unknown"
+    params = {
+        "method": "album.gettoptags",
+        "artist": artist,
+        "album": album,
+        "api_key": API_KEY,
+        "format": "json",
+        "autocorrect": 1
+    }
 
+    for attempt in range(MAX_RETRIES):
+        try:
+            r = requests.get(BASE_URL, params=params)
+
+            if r.status_code == 429:
+                rate_limit_backoff()
+                continue
+
+            if r.status_code >= 500:
+                time.sleep(1)
+                continue
+
+            data = r.json()
+
+            # Last.fm error case (album unknown)
+            if "error" in data:
+                return None, f"api_error_album_{data['error']}"
+
+            tags = data.get("toptags", {}).get("tag")
+            if not tags:
+                return None, "album_no_tags"
+
+            if isinstance(tags, dict):
+                return tags.get("name"), "album_ok"
+
+            if isinstance(tags, list) and len(tags) > 0:
+                return tags[0].get("name"), "album_ok"
+
+            return None, "album_no_tags"
+
+        except:
+            time.sleep(1)
+
+    return None, "album_network_error"
+
+def get_top_tag_with_fallback(artist, track, album):
+    """
+    Try track tag first, then album fallback.
+    Returns (tag, status)
+    """
+
+    # --- Try TRACK tags ---
+    tag, status = get_top_tag(artist, track)
+
+    if status == "ok":
+        return tag, "track_ok"
+
+    # If track-level tags missing, try ALBUM tags
+    if album:
+        album_tag, album_status = get_album_tag(artist, album)
+        if album_status == "album_ok":
+            return album_tag, "album_ok"
+
+    # No tag found at track or album level
+    return None, "no_tags"
 
 # Load Data
-df = pd.read_csv("data/songs/lyrics_with_genres_LASTFM.csv")
-df = df[df["match_status"] == "ok"]
-
-print(len(df))
+df = pd.read_csv(FILE_IN)
 
 # Prepopulate needed columns
-if "lastfm_tag" not in df.columns:
-    df["lastfm_tag"] = None
-if "genre" not in df.columns:
-    df["genre"] = None
+if "tags" not in df.columns:
+    df["tags"] = None
 
 failed_artist_song_pairs = []
 
 # MAIN LOOP
 pbar = tqdm(range(len(df)))
 for i in pbar:
-    artist = df.iloc[i][ARTIST_COL]
-    track  = df.iloc[i][SONG_COL]
+    artist = str(df.iloc[i][ARTIST_COL])
+    album = str(df.iloc[i][ALBUM_COL])
+    track  = str(df.iloc[i][SONG_COL])
 
     pbar.set_description(
         f"{artist[:20]} - {track[:20]} | fails={len(failed_artist_song_pairs)}"
     )
 
     if not artist or not track:
-        df.iloc[i, df.columns.get_loc("genre")] = "Unknown"
+        df.iloc[i, df.columns.get_loc("tags")] = None
         continue
 
-    tag, status = get_top_tag(artist, track)
+    tag, status = get_top_tag_with_fallback(artist, track, album)
 
-    if status != "ok":
-        tqdm.write(f"@{i} Status: {status}")
-        failed_artist_song_pairs.append((artist, track, status))
-        df.iloc[i, df.columns.get_loc("genre")] = "Unknown"
+    if status in ("track_ok", "album_ok"):
+        df.iloc[i, df.columns.get_loc("tags")] = tag
     else:
-        df.iloc[i, df.columns.get_loc("lastfm_tag")] = tag
-        df.iloc[i, df.columns.get_loc("genre")] = map_to_major(tag)
+        failed_artist_song_pairs.append((artist, track, status))
 
     time.sleep(REQUEST_SLEEP)
 
 
 # SAVE RAW
-df.to_csv("data/songs/lyrics_with_genres_raw.csv", index=False)
-
-# SAVE CLEANED
-df["genre"] = df["lastfm_tag"].apply(map_to_major)
-df.to_csv("data/songs/lyrics_with_genres.csv", index=False)
+df.to_csv(FILE_OUT, index=False)
 
 # SAVE FAILURES FOR LATER ANALYSIS
 pd.DataFrame(failed_artist_song_pairs, columns=["artist", "track", "reason"]).to_csv(
-    "data/songs/failed_genre_lookups.csv", index=False
+    FILE_DEBUG_OUT, index=False
 )

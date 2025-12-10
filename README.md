@@ -1,7 +1,9 @@
+# Sentiment Classification in Music
+
 This project implements and evaluates a BiLSTM sentiment classifier trained on multiple text corpora (GoEmotions, UCI Sentiment, and social media datasets). 
 It investigates how dataset characteristics influence model behavior when predicting sentiment in music lyrics.
 
-##################### How to train a model ##########################
+## How to train a model
 
 All training is done via training.py.
 
@@ -20,15 +22,24 @@ This will save:
 
 in the project root.
 
-##################### How to preprocess datasets ##########################
+## How to preprocess datasets
 
-`python -m preprocessing.<FILENAME>`
-
-example: 
+Each dataset was given it's own preprocessing file, example: 
 
 `python -m preprocessing.preproc_mentalhealth`
 
-############################# How to run project #######################
+See the preprocessing directory for processing options.
+
+### Preprocessing music
+
+The songs data needed a more sophisticated pipeline, here's each step:
+
+1. preprocessing/csvmerger.py (raw, per-artist, csvs --> joined csvs)
+1. preprocessing/songs_autocorrect.py (artist/title --> artist/title autocorrected by LastFM)
+1. preprocessing/songs_puller.py (artist/title --> LastFM tags)
+1. preprocessing/songs_preproc.py (LastFM tags --> genre, other cleaning)
+
+## How to run project
 
 use 
 
@@ -36,7 +47,7 @@ use
 
 To view results of trained model (sentiment scores) corresponding to the text input.
 
-################# The commands that were used to generate the models #################
+### The commands that were used to generate the models
 
 Commands for all 5 models used in main.py
 

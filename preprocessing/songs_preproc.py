@@ -1,81 +1,77 @@
 import pandas as pd
 
+FILE_IN = "data/songs/lyrics_with_tags.csv"
+FILE_OUT = "data/songs/lyrics_with_genres.csv"
+
 # RUN FROM PROJECT ROOT
-frame = pd.read_csv("data/songs/lyrics_with_genres.csv")
+frame = pd.read_csv(FILE_IN)
+
+GENRE_MAP = {
+    "pop": "Pop",
+    "dance pop": "Pop",
+    "rock": "Rock",
+    "alternative": "Rock",
+    "indie": "Rock",
+    "hip hop": "Hip-Hop",
+    "hiphop": "Hip-Hop",
+    "hip-hop": "Hip-Hop",
+    "rap": "Hip-Hop",
+    "trap": "Hip-Hop",
+    "rnb": "R&B",
+    "r&b": "R&B",
+    "soul": "R&B",
+    "funk": "R&B",
+    "electronic": "Electronic",
+    "edm": "Electronic",
+    "house": "Electronic",
+    "techno": "Electronic",
+    "trance": "Electronic",
+    "country": "Folk",
+    "americana": "Folk",
+    "acoustic": "Folk",
+    "metal": "Metal",
+    "jazz": "Jazz",
+    "classical": "Classical",
+    "folk": "Folk",
+    "latin": "Latin",
+    "reggaeton": "Latin",
+    "reggaeton": "Latin",
+    "reggae": "Reggae",
+    "blues": "Blues",
+    "00s": "00s",
+    "90s": "90s",
+    "disco": "Dance",
+    "dance": "Dance"
+}
+# Add 00s to genre map
+for i in range(25):
+    istr = str(i)
+    if(i < 10):
+        istr = "0" + istr
+    GENRE_MAP[istr] = "00s"
+unclassified_tags = set()
+
+def map_to_major(tag):
+    if tag is None:
+        return "Unknown"
+    tag_low = str(tag).lower()
+    for key in GENRE_MAP:
+        if key in tag_low:
+            return GENRE_MAP[key]
+    unclassified_tags.add(tag_low)
+    return "Unknown"
 
 # # Drop unclear examples
+frame["genre"] = frame["tags"].apply(map_to_major)
+
+unclassified_tags_list = list(unclassified_tags)
+unclassified_tags_list.sort()
+print(f"Unclassified tags: {unclassified_tags_list}")
+print()
+
+prelen = len(frame)
 frame = frame[frame["genre"] != "Unknown"]
-# frame.drop(columns=["id", "author", "subreddit", "link_id", "parent_id", "created_utc", "rater_id", "example_very_unclear"], inplace=True)
+frame = frame[frame["match_status"] == "ok"]
+print(f"Dropped {prelen - len(frame)} songs with unknown genre or bad match status.")
 
-frame.to_csv("data/songs/lyrics_with_genres_cleaned.csv", index=False)
-
-# # Clean text
-# frame["text"] = frame["text"].apply(clean_lyrics)
-
-# emotion_score = {
-#     # Positive emotions
-#     'love': 2,
-#     'excitement': 2,
-#     'approval': 2,
-#     'caring': 1.5,
-#     'desire': 1.5,
-#     'pride': 1.5,
-#     'surprise': 1.5,
-#     'joy': 1.5,
-#     'gratitude': 1,
-#     'admiration': 1,
-#     'amusement': 1,
-#     'optimism': 1,
-#     'curiosity': 1,
-#     'relief': 1,
-#     # Neutral emotions
-#     'neutral': 0,
-#     'confusion': 0,
-#     'realization': 0,
-#     # Negative emotions
-#     'annoyance': -1,
-#     'nervousness': -1,
-#     'disapproval': -1,
-#     'disappointment': -1.5,
-#     'embarrassment': -1.5,
-#     'fear': -1.5,
-#     'grief': -1.5,
-#     'disgust': -1.5,
-#     'remorse': -2,
-#     'sadness': -2,
-#     'anger': -2
-# }
-# emotion_cols = list(emotion_score.keys())
-
-# frame["emotions"] = frame[emotion_cols].apply(
-#     lambda row: [emotion for emotion, val in row.items() if val == 1],
-#     axis=1
-# )
-
-# # After we've compiled the one-hot emotion columns into a list, we can drop them
-# frame.drop(columns=emotion_cols, inplace=True)
-
-# def determine_sentiment(row):
-#     emotions = row["emotions"]
-#     weighted = False
-#     if(weighted):
-#         score = sum(emotion_score[e] for e in emotions)
-#     else:
-#         def sign(x):
-#             return (x > 0) - (x < 0)
-        
-#         score = sum(sign(emotion_score[e]) for e in emotions)
-
-#     if score > 0:
-#         return "positive"
-#     elif score < 0:
-#         return "negative"
-#     else:
-#         return "neutral"
-
-# frame["sentiment"] = frame.apply(determine_sentiment, axis=1)
-# frame.drop(columns=["emotions"], inplace=True)
-
-# print(frame.head())
-
-# frame.to_csv(out_file, index=False)
+frame.to_csv(FILE_OUT, index=False)
