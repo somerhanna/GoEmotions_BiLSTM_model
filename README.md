@@ -47,6 +47,12 @@ use
 
 To view results of trained model (sentiment scores) corresponding to the text input.
 
+and
+
+`python -m vis_models`
+
+To view correlation between models for each genre.
+
 ### The commands that were used to generate the models
 
 Commands for all 5 models used in main.py
